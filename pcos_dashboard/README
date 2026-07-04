@@ -1,82 +1,408 @@
-# 🌸 PCOS Dashboard
+# INTERACTIVE DASHBOARD FOR PCOS RISK ASSESSMENT AND PREDICTIVE ANALYSIS
+### Project Documentation & Technical Manual
 
-A comprehensive, role-based web application built with Streamlit and MariaDB to help patients, healthcare professionals, and 
-administrators track, monitor, and analyze Polycystic Ovary Syndrome (PCOS) symptoms and risk factors using Machine Learning.
+Project Folder Structure
 
-## ✨ Key Features
-
-This platform is divided into three distinct, secure portals based on the user's role:
-
- 👤 For Patients (Role 1):
-     Daily Journal: Log symptoms, lifestyle changes, and hormonal cycles.
-     ML Analysis: Get AI-driven insights and risk predictions based on questionnaire data.
-     Personalized Resources: Receive curated educational content tailored to specific health needs.
- 🩺 For Healthcare Professionals (Role 2):
-     Patient Connection: Securely link with patients using their email.
-     Health Monitoring: View patient journals, questionnaire results, and ML risk assessments in real-time.
- ⚙️ For Administrators (Role 3):
-     System Analytics: Monitor platform health, user growth, and overall ML model confidence.
-     User Management: Approve, edit, or remove users and export database backups.
-
----
-
-## 🛠️ Tech Stack
-
- Frontend: Streamlit, HTML/CSS (Custom UI Components)
- Backend: Python 3
- Database: MariaDB (SQL)
- Machine Learning: Scikit-Learn, XGBoost, Imbalanced-Learn
- Data Visualization: Pandas, Plotly, Matplotlib
-
----
-
-## 📂 Project Structure
-
-```text
+```
 pcos_dashboard/
-├── .env                    # Environment variables 
-├── .streamlit/ 
-│   ├── secrets.toml     
-│   └── config.toml  
 │
-├── README.md               # Project documentation
-└── src/                      
-    ├── app.py              # Application Entry Point (Login & Signup)
-    ├── ml.py               # Machine Learning models and pipelines
-    ├── requirements.txt    # Python dependencies  
-    │
-    ├── assets/             # Static assets
-    │   └── style.css       # Global custom UI styling
-    │
-    ├── database/           # Database Layer
-    │   ├── connection.py   # MariaDB connection handler
-    │   └── queries.py      # Prepared SQL queries
-    │
-    ├── utils/              # Helper Functions
-    │   ├── auth_tools.py   # Session state, password hashing, validation
-    │   ├── email_tool.py   # OTP and notification emails
-    │   ├── questions.py    # questionaire questions
-    │   └── ui_helpers.py   # CSS loaders and repeated UI logic
-    │
-    ├── components/         # Reusable UI Blocks
-    │   ├── charts.py       # Plotly chart generators
-    │   ├── metrics.py      # KPI metric cards
-    │   ├── sidebar.py      # Role-based navigation
-    │   └── header.py       # App header / branding
-    │
-    └── pages/              # Streamlit Application Pages
-        ├── 01_profile.py   
-        ├── 02_dashboard.py 
-        ├── 03_questionnaire.py 
-        ├── 04_resources.py 
-        │
-        ├── 11_user_journal.py            # Patient Tools
-        ├── 12_user_daily_quest.py 
-        ├── 13_user_personal_resources.py 
-        │
-        ├── 21_pro_connect.py             # Professional Tools
-        ├── 22_pro_monitor.py 
-        ├── 23_pro_details.py 
-        │
-        ├── 31_admin_dashboard.py         # Admin Tools
-        └── 32_user_management.py
+├── app.py                          ← Entry point: Login, Sign-up, Forgot Password
+│
+├── pages/                          ← All navigable pages (Streamlit reads these automatically)
+│   ├── 01_profile.py               ← User profile view & edit
+│   ├── 02_dashboard.py             ← Community dashboard with charts & clinic map
+│   ├── 03_questionnaire.py         ← 3-step PCOS risk assessment form
+│   ├── 04_resource.py              ← Live PubMed research article browser
+│   ├── 11_user_journal.py          ← Patient: cycle & mood tracking calendar
+│   ├── 12_user_daily_quest.py      ← Patient: gamified daily health quests
+│   ├── 13_user_personal_resource.py← Patient: personalised research recommendations
+│   ├── 21_pro_connect.py           ← Professional: search & link patients
+│   ├── 22_pro_monitor.py           ← Professional: patient monitoring dashboard
+│   ├── 23_pro_details.py           ← Professional: detailed patient logs & exports
+│   ├── 31_admin_dashboard.py       ← Admin: platform-wide analytics
+│   └── 32_user_management.py       ← Admin: approve doctors, manage accounts
+│
+├── components/                     ← Reusable UI building blocks
+│   ├── sidebar.py                  ← Left navigation panel (role-aware)
+│   ├── header.py                   ← Top bar with username, avatar, logout
+│   ├── disclaimer.py               ← Medical disclaimer banners & modals
+│   ├── charts.py                   ← All chart rendering functions
+│   └── metrics.py                  ← KPI metric cards (Today's Activity section)
+│
+├── utils/                          ← Helper tools used across the app
+│   ├── ui_helpers.py               ← Loads the global CSS stylesheet
+│   ├── auth_tools.py               ← Password hashing, login/logout, access control
+│   ├── email_tool.py               ← Sends OTP verification emails via Gmail
+│   ├── quest.py                    ← Daily quest generation (28-day evidence-based pool)
+│   ├── questions.py                ← Full questionnaire structure (all questions & types)
+│   └── maps.py                     ← Fetches & merges clinic location data
+│
+├── database/
+│   ├── connection.py               ← Establishes the MariaDB database connection
+│   └── queries.py                  ← All SQL queries used throughout the app
+│
+├── models/
+│   ├── pcos_stacking_model.joblib  ← Trained ML model (loaded at runtime)
+│   └── common_features.joblib      ← Feature list the model expects as input
+│
+├── assets/
+│   └── style.css                   ← Global CSS styles (colours, fonts, card designs)
+│
+└── .env                            ← Secret credentials (NOT committed to version control)
+                                       Contains: DB_HOST, DB_USER, DB_PASSWORD,
+                                                 DB_PORT, DB_NAME,
+                                                 SENDER_EMAIL, SENDER_PASSWORD
+
+
+## 4. User Roles & Access Control
+
+The platform has three distinct roles. Each role sees a different set of pages in the sidebar and has access to different features.
+
+| Role ID | Role Name | Who They Are | Pages They Can Access |
+|---|---|---|---|
+| 1 | **Patient** | General users managing their PCOS | Dashboard, Questionnaire, Resources, Profile, Journal, Daily Quests, My Resources |
+| 2 | **Health Professional** | Doctors or clinicians | Dashboard, Resources, Profile, Pro Connect, Patient Monitor, Patient Details |
+| 3 | **Admin** | System administrators | Dashboard, Resources, Profile, Admin Analytics, User Management |
+
+## 5. Setup & Installation
+
+### Prerequisites
+
+Ensure the following are installed on the host machine before proceeding:
+
+- Python 3.9 or higher
+- MariaDB server (running and accessible)
+- A Gmail account (for OTP email sending — requires an App Password, not the regular account password)
+
+## 6. Feature Walkthrough
+
+---
+
+### 6.1 Login & Authentication — `app.py`
+
+**What it does:** This is the entry point of the application. It handles three flows:
+
+**Login:** The user enters their email and password. The app looks up the email in the database, retrieves the stored password hash, and uses bcrypt to verify the entered password matches. On success, the user's ID, role, and name are stored in session state, and they are redirected to the dashboard.
+
+**Sign Up:** New users choose a role (Patient or Health Professional), enter their details, and create a password. Passwords are hashed before being saved — plain-text passwords are never stored. Professional accounts are given `status = 'pending'` and require admin approval.
+
+**Forgot Password:** The user enters their registered email. A 6-digit one-time code (OTP) is generated and emailed to them via Gmail. They then enter the code and a new password. If the code matches, the new password hash is saved to the database.
+
+**Auto-Login (Cookie Restore):** When a user logs in, their email is saved in a browser cookie. The next time they open the app, it reads the cookie, retrieves their account from the database, and logs them in automatically — without them needing to type their password again. The cookie expires after 24 hours.
+
+---
+
+### 6.2 Community Dashboard — `02_dashboard.py`
+
+**What it does:** The central hub of the platform, visible to all roles. It aggregates data from the entire user base into charts and metrics, giving a population-level view of PCOS trends.
+
+**Sections:**
+
+**At a Glance (KPI Cards):** Three metric cards show Total Users, Assessments Completed, and Daily Check-ins — pulled live from the database.
+
+**Assessed Risk Trends (Line Chart):** Shows how many users per month were assessed as Low, Medium, or High Risk. Data is pulled from the `predictions` table and grouped by month.
+
+**Impact of Exercise on Cycle Regularity (Bar Chart):** A stacked bar chart comparing the percentage of users with regular vs irregular cycles among those who exercise versus those who do not.
+
+**Top Reported Symptoms (Horizontal Bar Chart):** Counts how often each major symptom (pimples, weight gain, skin darkening, hirsutism, hair loss) appears across all submitted assessments.
+
+**Specialist Network Map:** An interactive map (powered by PyDeck) showing gynaecology clinics and PCOS-related healthcare facilities in Malaysia. Data comes from a curated backup list merged with live data from the OpenStreetMap Overpass API. Users can filter by area and by clinic name.
+
+**Export Button:** Non-admin users see a "Export Live Data" button that downloads all visible dashboard data as a multi-sheet Excel file.
+
+---
+
+### 6.3 PCOS Risk Questionnaire — `03_questionnaire.py`
+
+**What it does:** A 3-step guided form that collects clinical and lifestyle data from the patient, runs it through the trained machine learning model, and returns a PCOS risk prediction.
+
+**Step 1 — General Information:** Collects age, marriage duration, blood group, weight, height (auto-calculates BMI), hip and waist measurements (auto-calculates Waist-Hip Ratio).
+
+**Step 2 — Physical Symptoms:** Collects pulse rate, blood pressure, respiratory rate, cycle length and regularity (with conditional follow-up questions if irregular), skin darkening, weight gain, hirsutism, acne, and hair loss.
+
+**Step 3 — Lifestyle & Medical History:** Collects number of abortions, pregnancy status, fast food consumption, and exercise habits.
+
+**On Submission:**
+1. All answers are mapped to the exact feature names the ML model was trained on.
+2. The model returns a binary prediction (0 = Low Risk, 1 = High Risk) and a probability score.
+3. The submission, individual answers, and prediction are saved to the database.
+4. The result is shown to the user with their risk percentage.
+
+**Validation:** Each step checks that all required fields are filled before allowing progression. An error message lists any missing fields.
+
+---
+
+### 6.4 Resource Library — `04_resource.py`
+
+**What it does:** A live medical research browser that fetches real scientific articles directly from the PubMed database (run by the US National Library of Medicine).
+
+**Search Bar:** Users can enter any PCOS-related keyword (e.g., "insulin resistance", "diet"). The search automatically constrains results to PCOS literature — a user cannot search unrelated topics.
+
+**Three Risk-Based Columns:** Articles are pre-fetched and organised into three categories:
+- High Risk (Complications & Management)
+- Medium Risk (Symptoms & Fertility)
+- Low Risk (Lifestyle & Prevention)
+
+Each column supports pagination, showing 3 articles at a time from a pool of up to 50 fetched results. Users click "Next" and "Prev" to browse pages without leaving the screen.
+
+**Results are cached** for 1 hour to avoid re-fetching the same data repeatedly when users navigate back to the page.
+
+---
+
+### 6.5 User Profile — `01_profile.py`
+
+**What it does:** Displays the logged-in user's personal information retrieved from the database and allows them to update their name.
+
+**Profile Picture:** Shows a default avatar. If a profile picture has been saved to the server, it is loaded and displayed in a circular frame. An "Upload New Photo" workflow is available.
+
+**Personal Information Form:** Displays first name, last name, and email. Email is shown as read-only (cannot be changed without re-verification). A "Save Changes" button triggers an update to the database.
+
+**Professional-Specific Field:** If the logged-in user is a Health Professional (role 2), an additional "Professional License Number" field is shown alongside the email.
+
+**Account Settings:** An expandable section at the bottom allows users to change their password.
+
+---
+
+### 6.6 Cycle & Journal Tracker — `11_user_journal.py`
+
+**What it does:** A personal health diary for patients, combining a visual monthly calendar with detailed daily logging.
+
+**Calendar View:** Displays the current month as a grid. Days with period data are marked with a 🩸 emoji; days with journal entries are marked with 📝. Clicking any past date loads that day's data below the calendar.
+
+**Navigation:** Previous and Next buttons let users browse historical months.
+
+**Cycle Tracking Tab (Single Day):** For the selected date, the user can log:
+- Period flow (Nothing / Spotting / Heavy)
+- Mood (Awful to Great)
+- Cervical fluid type (multi-select checkboxes)
+- Symptoms (multi-select from a list of 30+ options)
+- Medication, blood pressure, sugar level, and free-text notes
+
+Existing entries display in a read-only view with Edit and Delete buttons.
+
+**Range Logging:** If the user selects a date range (Start Date → End Date), the form expands into collapsible sections — one per day in the range — allowing bulk logging across multiple days at once with a single "Save All" button.
+
+**Journal Entry Tab:** A separate free-text journal where users can write any thoughts or feelings for the selected date, paired with a mood rating. Multiple entries per day are supported.
+
+**CSV Export:** Users can download their period data as a grouped CSV file showing cycle start dates, end dates, and bleeding day counts.
+
+---
+
+### 6.7 Daily Quests — `12_user_daily_quest.py`
+
+**What it does:** A gamified daily check-in system designed to encourage consistent healthy habits in patients with PCOS.
+
+**How It Works:**
+- Each day of the week has a themed focus (e.g., Monday = 🥗 Nourish & Balance, Tuesday = 🏃 Move & Strengthen).
+- A set of quests (tasks) is randomly selected each day from a large pool of evidence-based health actions, all sourced from peer-reviewed PCOS research papers published between 2020 and 2026.
+- Quests are locked in for the entire day once generated — refreshing the page does not re-randomise them.
+
+**Rank System:** Users progress through three ranks based on accumulated Vitality points:
+- 🌱 Seedling (0–499 points): 5 major quests, each worth 20 points
+- 🌿 Sprout (500–1499 points): 5 major + 2 minor quests, totalling 100 points
+- ⚔️ PCOS Warrior (1500+ points): 7 major + 3 minor quests, totalling 100 points
+
+**Gauging Progress:** A gauge chart (0–100) updates live as the user checks off completed tasks.
+
+**Finish My Day Button:** When clicked:
+1. Vitality points earned are added to the user's total.
+2. The streak counter increments by 1.
+3. Both values are saved to the `user_stats` table in the database.
+
+**Decay Penalty:** If a user misses one or more days, a penalty is applied when they next log in. The penalty scales with their rank (10 points/day for Seedlings, up to 50 points/day for Warriors). A missed day also resets their streak to zero.
+
+---
+
+### 6.8 Personalised Resources — `13_user_personal_resource.py`
+
+**What it does:** A curated research article browser tailored to the patient's PCOS risk level from their most recent assessment.
+
+**Risk-Adaptive Content:** The PubMed search query changes based on the user's result:
+- Low Risk → lifestyle, diet, exercise, mental health articles
+- Moderate Risk → symptom management and diagnosis articles
+- High Risk → insulin resistance, hyperandrogenism, treatment and complications articles
+
+**Search & Pagination:** Users can search within their risk category. Results are paginated at 9 cards per page.
+
+**Bookmarking:** Each article card has a star icon (☆ / ⭐). Clicking it saves or removes the article from the user's bookmarks, stored in the `saved_articles` database table.
+
+**Bookmarked Tab:** A second tab shows all saved articles in a grid, with the option to remove bookmarks.
+
+---
+
+### 6.9 Pro Connect — `21_pro_connect.py`
+
+**What it does:** Allows Health Professionals to search for patients by email or username and link them to their account for monitoring.
+
+**Patient Search:** The professional enters a patient's email or username into the search box. The database is queried for matching Patient-role accounts. If found, the result is displayed with a "Link this Patient" button.
+
+**My Patients List:** All currently linked patients are displayed in a paginated table showing their name, email, and the date they were connected. A 📊 button on each row navigates to the Patient Monitor page for that patient.
+
+**Filtering:** A search box above the patient list filters by name or email in real time without hitting the database.
+
+---
+
+### 6.10 Patient Monitor — `22_pro_monitor.py`
+
+**What it does:** A high-level overview dashboard for a selected patient, accessible only to the Health Professional linked to that patient.
+
+**Patient Header:** Shows the patient's full name, email, and join date. A "← Back to List" button returns to Pro Connect.
+
+**PCOS Risk Panel:** Displays the patient's most recent prediction result (risk level and score percentage) from the `predictions` table.
+
+**Period Tracker Panel:** Shows a scatter chart of the patient's logged cycle dates, giving the professional a visual sense of tracking consistency.
+
+**Vitality Panel:** Displays the patient's total Vitality points and current streak from the `user_stats` table.
+
+**Clinical Notes (Dialog):** A "📝 Clinical Notes" button opens a pop-up dialog where the professional can:
+- View all previous notes for this patient
+- Add new notes (title + free-text content)
+- Edit any existing note inline
+- Delete notes they no longer need
+
+All notes are stored in the `clinical_notes` table, associated with both the doctor and the patient.
+
+**View Detail Button:** Navigates to the full Patient Details page for in-depth log review.
+
+---
+
+### 6.11 Patient Details — `23_pro_details.py`
+
+**What it does:** A detailed three-tab view of all recorded data for a selected patient, with CSV export options on each tab.
+
+**Tab 1 — Questionnaire Responses:** A full table of every question the patient answered across all submissions, with the date submitted. Exportable as CSV.
+
+**Tab 2 — Period & Symptom Log:** A filtered, date-sorted table of the patient's cycle log entries, showing only days with meaningful data (blank/default entries are excluded). Exportable as CSV.
+
+**Tab 3 — Vitality Quest Completions:** A log of all completed quests, showing the quest name, points earned, and date completed. Exportable as CSV.
+
+---
+
+### 6.12 Admin Analytics — `31_admin_dashboard.py`
+
+**What it does:** A platform-wide analytics overview accessible only to Admins.
+
+**Four KPI Metrics:**
+- Total Patients (role 1 users)
+- Registered Doctors (role 2 users)
+- Assessments Taken (total predictions in the database)
+- ML Average Confidence (average risk_score across all predictions, expressed as a percentage — a health indicator for the model's certainty)
+
+**Risk Distribution Chart:** A bar chart showing how many users fall into each risk category across the whole platform.
+
+**User Growth Chart:** A line chart tracking new user registrations day-by-day over the last 7 days.
+
+---
+
+### 6.13 User Management — `32_user_management.py`
+
+**What it does:** Gives Admins tools to manage user accounts across the platform.
+
+**Tab 1 — Verification Queue:** Lists all Health Professional accounts with `status = 'pending'`. Each entry shows the doctor's name, email, and registration date, with Approve and Reject buttons. Approving sets their status to `active`; rejecting sets it to `rejected`.
+
+**Tab 2 — User Directory:** A searchable, sortable table of all users on the platform (all roles) showing their ID, name, email, role, status, and join date. Below the table, an action area allows Admins to select any user and either Suspend or Reactivate their account.
+
+---
+
+## 7. Shared Components
+
+These files are imported and used across multiple pages. They ensure consistent design and behaviour throughout the app.
+
+### `components/sidebar.py` — Navigation Panel
+
+Renders the left-hand sidebar. The sidebar is **role-aware**: it reads `role_id` from session state and only renders buttons for pages that role is permitted to access. The currently active page's button is highlighted in a primary (filled) style; all others appear as secondary (outlined).
+
+### `components/header.py` — Top Navigation Bar
+
+Renders the top bar with the logged-in user's name (linking to their profile), a circular avatar image, a notification bell icon, and a "Log Out" button. Clicking Log Out clears the session, removes the login cookie, and redirects to the login page.
+
+### `components/disclaimer.py` — Medical Disclaimers
+
+Two reusable disclaimer components:
+
+- **`show_disclaimer_banner()`** — A subtle purple-bordered ribbon displayed at the bottom of pages. Used on the dashboard and resource pages to remind users this is not medical advice.
+- **`show_disclaimer_modal()`** — A full blocking overlay that prevents the page from loading until the user clicks "I understand, continue →". Intended for high-stakes pages.
+
+### `components/charts.py` — Chart Library
+
+All Plotly chart rendering functions are centralised here. This means chart styling (colours, fonts, background transparency) is consistent platform-wide. Key functions:
+
+- `create_assessed_risk_trend(df)` — Line chart of risk levels over months
+- `create_lifestyle_vs_cycle_chart(df)` — Stacked bar comparing exercise vs cycle regularity
+- `create_symptoms_chart(df)` — Horizontal bar of top reported symptoms
+- `render_demographics_table(df)` — Age-group breakdown table with progress bars
+- `render_risk_distribution_chart()` / `render_user_growth_chart()` — Admin-specific charts
+
+### `components/metrics.py` — KPI Cards
+
+`render_traffic_metrics(df)` renders three styled metric cards (Total Users, Assessments Completed, Daily Check-ins) in a 3-column layout. Each card has a colour-coded top border and a large bold number.
+
+---
+
+## 8. How Key Parts of the Code Work
+
+### 8.1 Authentication Flow
+
+**Password Hashing (auth_tools.py):**
+When a user registers, their password is never stored as plain text. It is run through the **bcrypt** algorithm, which produces a cryptographic hash — a fixed-length string that cannot be reversed to reveal the original password. On login, bcrypt compares the entered password against the stored hash.
+
+```python
+# On registration:
+hashed_pw = hash_password("MyPassword123")
+# Stores: "$2b$12$..." (a hash, not the real password)
+
+# On login:
+verify_password("MyPassword123", "$2b$12$...")
+# Returns: True
+```
+
+**Session State:**
+When a user logs in successfully, key data is stored in Streamlit's `session_state` — a temporary in-memory store that persists while the browser tab is open:
+
+```python
+st.session_state['user_id'] = 7
+st.session_state['role_id'] = 1
+st.session_state['full_name'] = "Nur Aisyah"
+st.session_state['logged_in'] = True
+```
+
+Every other page reads from `session_state` to know who is logged in and what they are allowed to do.
+
+---
+
+### 8.2 Machine Learning Prediction Pipeline
+
+The ML model is a **Stacking Classifier** — an ensemble method that combines the outputs of several base models (e.g., Random Forest, Gradient Boosting) through a final meta-learner for improved accuracy.
+
+**How it runs at submission time:**
+
+1. The user's questionnaire answers are collected from session state.
+2. Text answers (e.g., "Yes"/"No", "Regular"/"Irregular") are converted to numbers using lookup tables (mappings). For example: `{"Yes": 1, "No": 0}`, `{"Regular": 2, "Irregular": 4}`.
+3. The answers are assembled into a single-row DataFrame (a table with one row) with columns matching exactly what the model was trained on — loaded from `common_features.joblib`.
+4. `model.predict()` returns `0` (Low Risk) or `1` (High Risk).
+5. `model.predict_proba()` returns the probability, e.g., `0.83` = 83% confidence the patient is High Risk.
+6. Both the prediction and probability are saved to the `predictions` table in the database.
+
+```python
+input_df = pd.DataFrame([final_data])[common_features]
+prediction = model.predict(input_df)          # → [1] (High Risk)
+probability = model.predict_proba(input_df)[0][1]  # → 0.83
+```
+
+---
+
+### 8.3 Quest Generation System
+
+The quest system (`utils/quest.py`) uses a curated pool of evidence-based health tasks drawn from 20+ peer-reviewed PCOS papers (2020–2026).
+
+Each day of the week maps to a health theme and a pool of ~10 major and 6 minor quests. On a given day, `random.sample()` draws a subset from the pool — the size of the subset depends on the user's rank:
+
+| Rank | Major Quests Selected | Minor Quests Selected | Total Points |
+|---|---|---|---|
+| Seedling | 5 × 20 pts | 0 | 100 |
+| Sprout | 5 × 16 pts | 2 × 10 pts | 100 |
+| PCOS Warrior | 7 × 10 pts | 3 × 10 pts | 100 |
+
+Because quests are randomly sampled from a large pool each day, users experience different combinations across a 28-day cycle — approximating a varied personalised plan without requiring manual curation.
+
+The selected quests are stored in session state at the start of the day and not regenerated unless the date changes, ensuring consistency during a single session.
