@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import joblib
+import os
 from database.connection import get_connection
 from utils.ui_helpers import load_css
 from components.sidebar import render_sidebar
@@ -32,8 +33,9 @@ show_disclaimer_banner("This platform is not a diagnostic tool and does not repl
 
 @st.cache_resource 
 def load_models():
-    model = joblib.load('models/pcos_stacking_model.joblib')
-    common_features = joblib.load('models/common_features.joblib')
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # pages/ -> src/
+    model = joblib.load(os.path.join(base_dir, 'models', 'pcos_stacking_model.joblib'))
+    common_features = joblib.load(os.path.join(base_dir, 'models', 'common_features.joblib'))
     return model, common_features
 
 model, common_features = load_models()
